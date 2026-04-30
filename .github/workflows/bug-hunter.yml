@@ -1,0 +1,40 @@
+name: Reusable Bug Hunter
+
+on:
+  workflow_call:
+    inputs:
+      fail_on_critical:
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Get changed files
+        id: files
+        uses: tj-actions/changed-files@v44
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm install || true
+
+      - name: Run bug analysis
+        run: |
+          node scripts/analyze.js "${{ steps.files.outputs.all_changed_files }}" || exit_code=$?
+          
+          if [ "${{ inputs.fail_on_critical }}" = "true" ] && [ "$exit_code" -ne 0 ]; then
+            echo "❌ Critical issues found"
+            exit 1
+          else
+            echo "✅ Completed without blocking"
+          fi
